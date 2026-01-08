@@ -113,12 +113,13 @@ export default function DocumentsPage() {
 
     const fetchProjects = async () => {
         try {
-            const res = await fetch('/api/projects?limit=100', {
+            const API_BASE = import.meta.env.VITE_API_URL || '/api';
+            const res = await fetch(`${API_BASE}/projects?limit=500`, {
                 headers: { 'Authorization': `Bearer ${accessToken}` },
             });
             if (res.ok) {
                 const data = await res.json();
-                setProjects(data.projects || data || []);
+                setProjects(data.data || data.projects || data || []);
             }
         } catch (error) {
             console.error('Failed to fetch projects:', error);

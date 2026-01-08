@@ -142,7 +142,7 @@ export default function FinancePage() {
             });
             if (projRes.ok) {
                 const data = await projRes.json();
-                setProjects(data.data || data.projects || []);
+                setProjects(data.data || data.projects || data || []);
             }
         } catch (err) {
             console.error('Failed to fetch data:', err);

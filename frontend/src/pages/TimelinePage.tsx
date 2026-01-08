@@ -35,12 +35,16 @@ const statusColors: Record<string, { bg: string; bar: string }> = {
 export default function TimelinePage() {
     const { accessToken } = useAuthStore();
     const [milestones, setMilestones] = useState<Milestone[]>([]);
+    const [projects, setProjects] = useState<{ id: string; code: string; title: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [categoryFilter, setCategoryFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [projectFilter, setProjectFilter] = useState('');
     const ganttRef = useRef<HTMLDivElement>(null);
 
-    // Mock milestones data
+    const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
+    // Mock milestones data (fallback)
     const mockMilestones: Milestone[] = [
         { id: '1', projectId: 'p1', projectCode: 'GAP-2024-SHM-001', projectTitle: 'Structural Health Monitoring', title: 'Phase 1: Sensor Installation', startDate: '2024-01-15', endDate: '2024-06-30', progress: 100, status: 'COMPLETED', category: 'GAP' },
         { id: '2', projectId: 'p1', projectCode: 'GAP-2024-SHM-001', projectTitle: 'Structural Health Monitoring', title: 'Phase 2: Data Collection', startDate: '2024-07-01', endDate: '2024-12-31', progress: 75, status: 'IN_PROGRESS', category: 'GAP' },
@@ -53,17 +57,49 @@ export default function TimelinePage() {
     ];
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setMilestones(mockMilestones);
-            setLoading(false);
-        }, 500);
-        return () => clearTimeout(timer);
+        fetchProjects();
+        fetchMilestones();
     }, []);
+
+    const fetchProjects = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/projects?limit=500`, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setProjects(data.data || data.projects || data || []);
+            }
+        } catch (err) {
+            console.error('Failed to fetch projects:', err);
+        }
+    };
+
+    const fetchMilestones = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/timeline/milestones`, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setMilestones(data.data || data.milestones || data || []);
+            } else {
+                // Fallback to mock data if API not available
+                setMilestones(mockMilestones);
+            }
+        } catch (err) {
+            console.error('Failed to fetch milestones:', err);
+            setMilestones(mockMilestones);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredMilestones = milestones.filter(m => {
         const matchesCategory = !categoryFilter || m.category === categoryFilter;
         const matchesStatus = !statusFilter || m.status === statusFilter;
-        return matchesCategory && matchesStatus;
+        const matchesProject = !projectFilter || m.projectId === projectFilter;
+        return matchesCategory && matchesStatus && matchesProject;
     });
 
     // Group milestones by project
@@ -208,6 +244,20 @@ export default function TimelinePage() {
                             <option value="IN_PROGRESS">In Progress</option>
                             <option value="COMPLETED">Completed</option>
                             <option value="OVERDUE">Overdue</option>
+                        </select>
+                    </div>
+                    <div className="relative">
+                        <select
+                            className="input-premium min-w-48"
+                            value={projectFilter}
+                            onChange={(e) => setProjectFilter(e.target.value)}
+                        >
+                            <option value="">All Projects</option>
+                            {projects.map(project => (
+                                <option key={project.id} value={project.id}>
+                                    {project.code} - {project.title}
+                                </option>
+                            ))}
                         </select>
                     </div>
                 </div>

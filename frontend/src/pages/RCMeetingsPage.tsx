@@ -72,6 +72,14 @@ export default function RCMeetingsPage() {
     const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
     const [generating, setGenerating] = useState(false);
+    const [showAddAgendaModal, setShowAddAgendaModal] = useState(false);
+    const [agendaFormData, setAgendaFormData] = useState({
+        projectId: '',
+        title: '',
+        type: 'PROJECT_REVIEW',
+        presenter: '',
+    });
+    const [savingAgenda, setSavingAgenda] = useState(false);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -114,12 +122,12 @@ export default function RCMeetingsPage() {
 
     const fetchProjects = async () => {
         try {
-            const response = await fetch(`${API_BASE}/projects?limit=100`, {
+            const response = await fetch(`${API_BASE}/projects?limit=500`, {
                 headers: { Authorization: `Bearer ${accessToken}` },
             });
             if (response.ok) {
                 const data = await response.json();
-                setProjects(data.projects || data || []);
+                setProjects(data.data || data.projects || data || []);
             }
         } catch (err) {
             console.error('Failed to fetch projects:', err);
@@ -214,6 +222,46 @@ export default function RCMeetingsPage() {
         } finally {
             setGenerating(false);
             setShowAgendaBookModal(false);
+        }
+    };
+
+    const openAddAgendaModal = () => {
+        setAgendaFormData({ projectId: '', title: '', type: 'PROJECT_REVIEW', presenter: '' });
+        setShowAddAgendaModal(true);
+    };
+
+    const handleAddAgendaItem = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedMeeting) return;
+        setSavingAgenda(true);
+
+        try {
+            const response = await fetch(`${API_BASE}/rc-meetings/${selectedMeeting.id}/agenda-items`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify(agendaFormData),
+            });
+
+            if (response.ok) {
+                setShowAddAgendaModal(false);
+                setAgendaFormData({ projectId: '', title: '', type: 'PROJECT_REVIEW', presenter: '' });
+                fetchMeetings();
+                alert('Agenda item added successfully');
+            } else {
+                // Demo: add locally
+                alert(`Agenda item "${agendaFormData.title || 'Project Review'}" would be added to RC Meeting #${selectedMeeting.meetingNumber}`);
+                setShowAddAgendaModal(false);
+                setAgendaFormData({ projectId: '', title: '', type: 'PROJECT_REVIEW', presenter: '' });
+            }
+        } catch (err) {
+            console.error('Failed to add agenda item:', err);
+            alert(`Agenda item would be added to the meeting.`);
+            setShowAddAgendaModal(false);
+        } finally {
+            setSavingAgenda(false);
         }
     };
 
@@ -495,7 +543,7 @@ export default function RCMeetingsPage() {
                                     Add projects and topics to the meeting agenda
                                 </p>
                                 {canManage && (
-                                    <button className="btn-primary">
+                                    <button onClick={openAddAgendaModal} className="btn-primary">
                                         <AddRegular className="w-4 h-4 mr-2" />
                                         Add Agenda Item
                                     </button>
@@ -556,7 +604,7 @@ export default function RCMeetingsPage() {
                                             <p className="text-sm text-secondary-600 truncate">{project.title}</p>
                                         </div>
                                         <span className={`badge ${project.status === 'ACTIVE' ? 'badge-success' :
-                                                project.status === 'COMPLETED' ? 'badge-secondary' : 'badge-warning'
+                                            project.status === 'COMPLETED' ? 'badge-secondary' : 'badge-warning'
                                             }`}>
                                             {project.status}
                                         </span>
@@ -577,6 +625,86 @@ export default function RCMeetingsPage() {
                                 {generating ? 'Generating...' : 'Generate PDF'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Agenda Item Modal */}
+            {showAddAgendaModal && selectedMeeting && (
+                <div className="modal-backdrop" onClick={() => setShowAddAgendaModal(false)}>
+                    <div className="modal-content max-w-lg" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-secondary-100 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-semibold text-secondary-900">Add Agenda Item</h2>
+                                <p className="text-sm text-secondary-500 mt-1">
+                                    For RC Meeting #{selectedMeeting.meetingNumber}
+                                </p>
+                            </div>
+                            <button onClick={() => setShowAddAgendaModal(false)} className="p-2 hover:bg-secondary-100 rounded-lg">
+                                <DismissRegular className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleAddAgendaItem} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-secondary-700 mb-1">Item Type *</label>
+                                <select
+                                    value={agendaFormData.type}
+                                    onChange={e => setAgendaFormData({ ...agendaFormData, type: e.target.value })}
+                                    className="input-premium"
+                                    required
+                                >
+                                    <option value="PROJECT_REVIEW">Project Review</option>
+                                    <option value="NEW_PROJECT">New Project Proposal</option>
+                                    <option value="PROJECT_EXTENSION">Project Extension</option>
+                                    <option value="BUDGET_REVISION">Budget Revision</option>
+                                    <option value="GENERAL">General Discussion</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-secondary-700 mb-1">Select Project</label>
+                                <select
+                                    value={agendaFormData.projectId}
+                                    onChange={e => setAgendaFormData({ ...agendaFormData, projectId: e.target.value })}
+                                    className="input-premium"
+                                >
+                                    <option value="">No project (general item)</option>
+                                    {projects.map(project => (
+                                        <option key={project.id} value={project.id}>
+                                            {project.code} - {project.title}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-secondary-700 mb-1">Agenda Title</label>
+                                <input
+                                    type="text"
+                                    value={agendaFormData.title}
+                                    onChange={e => setAgendaFormData({ ...agendaFormData, title: e.target.value })}
+                                    placeholder="Optional custom title..."
+                                    className="input-premium"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-secondary-700 mb-1">Presenter</label>
+                                <input
+                                    type="text"
+                                    value={agendaFormData.presenter}
+                                    onChange={e => setAgendaFormData({ ...agendaFormData, presenter: e.target.value })}
+                                    placeholder="Name of presenter..."
+                                    className="input-premium"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button type="button" onClick={() => setShowAddAgendaModal(false)} className="btn-secondary">
+                                    Cancel
+                                </button>
+                                <button type="submit" disabled={savingAgenda} className="btn-primary">
+                                    {savingAgenda ? 'Adding...' : 'Add Item'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
+import { ROLE_PERMISSIONS, PAGE_ACCESS, Resource, Role } from '../hooks/useRBAC';
 import {
     PersonRegular,
     SearchRegular,
@@ -110,6 +111,7 @@ export default function UsersPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    const [activeTab, setActiveTab] = useState<'users' | 'access-control'>('users');
 
     // Check if current user can manage staff
     const canManageStaff = ['ADMIN', 'SUPERVISOR', 'DIRECTOR', 'DIRECTOR_GENERAL'].includes(currentUser?.role || '');
@@ -151,7 +153,7 @@ export default function UsersPage() {
                 headers: { Authorization: `Bearer ${accessToken}` },
             });
             const data = await response.json();
-            setProjects(data.projects || data || []);
+            setProjects(data.data || data.projects || data || []);
         } catch (err) {
             console.error('Failed to fetch projects:', err);
         }
@@ -397,7 +399,7 @@ export default function UsersPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-display font-bold text-secondary-900">User Management</h1>
-                    <p className="text-secondary-500 mt-1">Manage user accounts, roles, and project assignments</p>
+                    <p className="text-secondary-500 mt-1">Manage user accounts, roles, and access control</p>
                 </div>
                 <div className="flex items-center gap-3">
                     {canManageStaff && selectedUsers.size > 0 && (

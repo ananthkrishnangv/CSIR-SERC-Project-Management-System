@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
+import { PageGuard, RoleGuard } from './components/RBACGuard';
 import LoginPage from './pages/LoginPage';
 import DashboardLayout from './layouts/DashboardLayout';
 import DashboardPage from './pages/DashboardPage';
@@ -17,6 +18,7 @@ import ProfilePage from './pages/ProfilePage';
 import DGDashboardPage from './pages/DGDashboardPage';
 import BulkImportPage from './pages/BulkImportPage';
 import ArchivePage from './pages/ArchivePage';
+import AccessDeniedPage from './pages/AccessDeniedPage';
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -46,21 +48,34 @@ function App() {
                     }
                 >
                     <Route index element={<Navigate to="/dashboard" replace />} />
-                    <Route path="dashboard" element={<DashboardPage />} />
-                    <Route path="dg-dashboard" element={<DGDashboardPage />} />
-                    <Route path="projects" element={<ProjectsPage />} />
-                    <Route path="projects/:id" element={<ProjectDetailPage />} />
-                    <Route path="finance" element={<FinancePage />} />
-                    <Route path="staff" element={<StaffPage />} />
-                    <Route path="rc-meetings" element={<RCMeetingsPage />} />
-                    <Route path="documents" element={<DocumentsPage />} />
-                    <Route path="reports" element={<ReportsPage />} />
-                    <Route path="timeline" element={<TimelinePage />} />
-                    <Route path="settings" element={<SettingsPage />} />
-                    <Route path="users" element={<UsersPage />} />
-                    <Route path="profile" element={<ProfilePage />} />
-                    <Route path="bulk-import" element={<BulkImportPage />} />
-                    <Route path="archive" element={<ArchivePage />} />
+                    <Route path="dashboard" element={<PageGuard page="dashboard"><DashboardPage /></PageGuard>} />
+                    <Route path="dg-dashboard" element={
+                        <RoleGuard roles={['ADMIN', 'DIRECTOR']}>
+                            <DGDashboardPage />
+                        </RoleGuard>
+                    } />
+                    <Route path="projects" element={<PageGuard page="projects"><ProjectsPage /></PageGuard>} />
+                    <Route path="projects/:id" element={<PageGuard page="projects"><ProjectDetailPage /></PageGuard>} />
+                    <Route path="finance" element={<PageGuard page="finance"><FinancePage /></PageGuard>} />
+                    <Route path="staff" element={<PageGuard page="staff"><StaffPage /></PageGuard>} />
+                    <Route path="rc-meetings" element={<PageGuard page="rc-meetings"><RCMeetingsPage /></PageGuard>} />
+                    <Route path="documents" element={<PageGuard page="documents"><DocumentsPage /></PageGuard>} />
+                    <Route path="reports" element={<PageGuard page="reports"><ReportsPage /></PageGuard>} />
+                    <Route path="timeline" element={<PageGuard page="timeline"><TimelinePage /></PageGuard>} />
+                    <Route path="settings" element={<PageGuard page="settings"><SettingsPage /></PageGuard>} />
+                    <Route path="users" element={
+                        <RoleGuard roles={['ADMIN', 'DIRECTOR']}>
+                            <UsersPage />
+                        </RoleGuard>
+                    } />
+                    <Route path="profile" element={<PageGuard page="profile"><ProfilePage /></PageGuard>} />
+                    <Route path="bulk-import" element={
+                        <RoleGuard roles={['ADMIN', 'DIRECTOR', 'SUPERVISOR']}>
+                            <BulkImportPage />
+                        </RoleGuard>
+                    } />
+                    <Route path="archive" element={<PageGuard page="archive"><ArchivePage /></PageGuard>} />
+                    <Route path="access-denied" element={<AccessDeniedPage />} />
                 </Route>
 
                 {/* Catch all */}
@@ -71,3 +86,4 @@ function App() {
 }
 
 export default App;
+
