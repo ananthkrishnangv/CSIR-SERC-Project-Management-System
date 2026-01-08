@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
+import TodoList from '../components/TodoList';
 import {
     FolderRegular,
     MoneyRegular,
@@ -382,6 +383,11 @@ export default function DashboardPage() {
                             </Link>
                         ))}
                     </div>
+                </div>
+
+                {/* My Tasks */}
+                <div className="premium-card p-6">
+                    <TodoList compact />
                 </div>
 
                 {/* Upcoming RC Meetings */}
