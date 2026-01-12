@@ -6,6 +6,8 @@ import DashboardLayout from './layouts/DashboardLayout';
 import DashboardPage from './pages/DashboardPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
+import ProposalPage from './pages/ProposalPage';
+import ProposalReviewPage from './pages/ProposalReviewPage';
 import FinancePage from './pages/FinancePage';
 import StaffPage from './pages/StaffPage';
 import RCMeetingsPage from './pages/RCMeetingsPage';
@@ -56,6 +58,8 @@ function App() {
                     } />
                     <Route path="projects" element={<PageGuard page="projects"><ProjectsPage /></PageGuard>} />
                     <Route path="projects/:id" element={<PageGuard page="projects"><ProjectDetailPage /></PageGuard>} />
+                    <Route path="proposals" element={<ProposalPage />} />
+                    <Route path="proposals/:id" element={<ProposalReviewPage />} />
                     <Route path="finance" element={<PageGuard page="finance"><FinancePage /></PageGuard>} />
                     <Route path="staff" element={<PageGuard page="staff"><StaffPage /></PageGuard>} />
                     <Route path="rc-meetings" element={<PageGuard page="rc-meetings"><RCMeetingsPage /></PageGuard>} />

@@ -14,6 +14,7 @@ import importRoutes from './import.routes.js';
 import staffRoutes from './staff.routes.js';
 import reportRoutes from './report.routes.js';
 import budgetRoutes from './budget.routes.js';
+import proposalRoutes from './proposal.routes.js';
 import prisma from '../config/database.js';
 
 const router = Router();
@@ -52,6 +53,7 @@ router.use('/import', importRoutes);
 router.use('/staff', staffRoutes);
 router.use('/reports', reportRoutes);
 router.use('/budgets', budgetRoutes);
+router.use('/proposals', proposalRoutes);
 
 export default router;
 

@@ -24,6 +24,7 @@ import {
     CheckmarkCircleRegular,
     MailRegular,
     ArchiveRegular,
+    LightbulbFilamentRegular,
 } from '@fluentui/react-icons';
 
 interface Notification {
@@ -38,6 +39,7 @@ const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeRegular },
     { name: 'DG Dashboard', href: '/dg-dashboard', icon: BuildingMultipleRegular, roles: ['DIRECTOR_GENERAL', 'ADMIN', 'DIRECTOR'] },
     { name: 'Projects', href: '/projects', icon: FolderRegular },
+    { name: 'Project Proposal', href: '/proposals', icon: LightbulbFilamentRegular },
     { name: 'Finance', href: '/finance', icon: MoneyRegular, roles: ['ADMIN', 'DIRECTOR', 'DIRECTOR_GENERAL', 'SUPERVISOR', 'PROJECT_HEAD'] },
     { name: 'Staff', href: '/staff', icon: PeopleTeamRegular },
     { name: 'RC Meetings', href: '/rc-meetings', icon: CalendarRegular, roles: ['ADMIN', 'DIRECTOR', 'DIRECTOR_GENERAL', 'SUPERVISOR', 'RC_MEMBER'] },
