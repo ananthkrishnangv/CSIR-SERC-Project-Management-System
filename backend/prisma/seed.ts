@@ -39,18 +39,14 @@ async function main() {
     });
     console.log('✅ Director user created:', director.email);
 
-    // Create verticals
+    // Create verticals (Thrust Areas / Areas of Research)
     const verticals = [
-        { name: 'Wind Engineering', code: 'WE', description: 'Aerodynamic studies and wind effects on structures' },
-        { name: 'Tower Testing', code: 'TT', description: 'Testing and certification of transmission towers' },
-        { name: 'Structural Health Monitoring', code: 'SHM', description: 'Monitoring and assessment of structural health' },
-        { name: 'Concrete Technology', code: 'CT', description: 'Advanced concrete materials and technology' },
-        { name: 'Steel Structures', code: 'SS', description: 'Design and testing of steel structures' },
-        { name: 'Earthquake Engineering', code: 'EE', description: 'Seismic analysis and design' },
-        { name: 'Fatigue & Fracture', code: 'FF', description: 'Fatigue and fracture mechanics studies' },
-        { name: 'Offshore Structures', code: 'OS', description: 'Design of offshore and marine structures' },
-        { name: 'Smart Materials', code: 'SM', description: 'Smart and advanced materials research' },
-        { name: 'Numerical Modelling', code: 'NM', description: 'Computational and numerical methods' },
+        { name: 'Structural Health Monitoring & Life Extension', code: 'SHMLE', description: 'Monitoring structural health and extending service life of structures' },
+        { name: 'Disaster Mitigation', code: 'DM', description: 'Natural and man-made disaster mitigation strategies and structural resilience' },
+        { name: 'Advanced Materials for Sustainable Structure', code: 'AMSS', description: 'Research on sustainable construction materials and green building technologies' },
+        { name: 'Special and Multi functional Structures', code: 'SMFS', description: 'Design and analysis of specialized and multi-functional structural systems' },
+        { name: 'Energy Infrastructure', code: 'EI', description: 'Structures for energy sector including renewable energy and power transmission' },
+        { name: 'Offshore Structures', code: 'OS', description: 'Offshore platforms, coastal structures, and marine infrastructure' },
     ];
 
     for (const v of verticals) {
@@ -116,23 +112,23 @@ async function main() {
     console.log('✅ Project Head user created');
 
     // Create sample project
-    const windEngineering = await prisma.vertical.findUnique({ where: { code: 'WE' } });
+    const shmleVertical = await prisma.vertical.findUnique({ where: { code: 'SHMLE' } });
 
-    if (windEngineering) {
+    if (shmleVertical) {
         await prisma.project.upsert({
-            where: { code: 'GAP-2025-WE-001' },
+            where: { code: 'GAP-2025-SHMLE-001' },
             update: {},
             create: {
-                code: 'GAP-2025-WE-001',
-                title: 'Wind Load Assessment for Tall Buildings in Urban Environment',
-                description: 'Comprehensive study on wind effects on tall buildings considering urban terrain roughness and interference effects',
+                code: 'GAP-2025-SHMLE-001',
+                title: 'Structural Health Assessment of Heritage Bridges using Advanced Monitoring Techniques',
+                description: 'Development of comprehensive SHM framework for evaluating and extending service life of heritage bridge structures',
                 category: 'GAP',
-                verticalId: windEngineering.id,
+                verticalId: shmleVertical.id,
                 projectHeadId: projectHead.id,
                 status: 'ACTIVE',
                 startDate: new Date('2025-01-01'),
                 endDate: new Date('2027-12-31'),
-                objectives: 'To develop guidelines for wind load estimation in urban environments',
+                objectives: 'To develop guidelines for structural health monitoring and life extension of heritage structures',
                 progress: 15,
             },
         });

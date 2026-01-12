@@ -24,7 +24,7 @@ interface Project {
     id: string;
     code: string;
     title: string;
-    category: 'GAP' | 'CNP' | 'OLP' | 'EFP';
+    category: 'GAP' | 'CNP' | 'OLP' | 'EFP' | 'BMP' | 'FBR' | 'FTC' | 'FTT' | 'MMP' | 'NCP' | 'NMITLI' | 'MLP' | 'SSP' | 'STS';
     status: string;
     progress: number;
     vertical?: { name: string; code: string };
@@ -232,6 +232,16 @@ export default function ProjectsPage() {
         CNP: 'bg-success-100 text-success-700 border-success-200',
         OLP: 'bg-accent-100 text-accent-700 border-accent-200',
         EFP: 'bg-warning-100 text-warning-700 border-warning-200',
+        BMP: 'bg-blue-100 text-blue-700 border-blue-200',
+        FBR: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+        FTC: 'bg-purple-100 text-purple-700 border-purple-200',
+        FTT: 'bg-pink-100 text-pink-700 border-pink-200',
+        MMP: 'bg-rose-100 text-rose-700 border-rose-200',
+        NCP: 'bg-orange-100 text-orange-700 border-orange-200',
+        NMITLI: 'bg-teal-100 text-teal-700 border-teal-200',
+        MLP: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+        SSP: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        STS: 'bg-lime-100 text-lime-700 border-lime-200',
     };
 
     const categoryLabels: Record<string, string> = {
@@ -239,6 +249,16 @@ export default function ProjectsPage() {
         CNP: 'Consultancy',
         OLP: 'Other Lab',
         EFP: 'Ext. Funded',
+        BMP: 'Bilateral Mission',
+        FBR: 'Focus Basic Research',
+        FTC: 'Fast Track Commerc.',
+        FTT: 'Fast Track Trans.',
+        MMP: 'Mission Mode',
+        NCP: 'Niche Creating',
+        NMITLI: 'NMITLI',
+        MLP: 'Multi Lab',
+        SSP: 'Sponsored Scheme',
+        STS: 'Short Term Service',
     };
 
     const statusColors: Record<string, string> = {
@@ -331,6 +351,16 @@ export default function ProjectsPage() {
                             <option value="CNP">Consultancy (CNP)</option>
                             <option value="OLP">Other Lab (OLP)</option>
                             <option value="EFP">Ext. Funded (EFP)</option>
+                            <option value="BMP">Bilateral Mission (BMP)</option>
+                            <option value="FBR">Focus Basic Research (FBR)</option>
+                            <option value="FTC">Fast Track Commerc. (FTC)</option>
+                            <option value="FTT">Fast Track Trans. (FTT)</option>
+                            <option value="MMP">Mission Mode (MMP)</option>
+                            <option value="NCP">Niche Creating (NCP)</option>
+                            <option value="NMITLI">NMITLI</option>
+                            <option value="MLP">Multi Lab (MLP)</option>
+                            <option value="SSP">Sponsored Scheme (SSP)</option>
+                            <option value="STS">Short Term Service (STS)</option>
                         </select>
                         <ChevronDownRegular className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-400 pointer-events-none" />
                     </div>
@@ -611,7 +641,7 @@ export default function ProjectsPage() {
                                     />
                                 </div>
 
-                                {/* Category and Vertical */}
+                                {/* Category and Thrust Area */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-secondary-700 mb-1">
@@ -627,6 +657,16 @@ export default function ProjectsPage() {
                                             <option value="CNP">Consultancy (CNP)</option>
                                             <option value="OLP">Other Lab (OLP)</option>
                                             <option value="EFP">Externally Funded (EFP)</option>
+                                            <option value="BMP">Bilateral Mission (BMP)</option>
+                                            <option value="FBR">Focus Basic Research (FBR)</option>
+                                            <option value="FTC">Fast Track Commercialization (FTC)</option>
+                                            <option value="FTT">Fast Track Translation (FTT)</option>
+                                            <option value="MMP">Mission Mode Project (MMP)</option>
+                                            <option value="NCP">Niche Creating Projects (NCP)</option>
+                                            <option value="NMITLI">NMITLI</option>
+                                            <option value="MLP">Multi Lab Projects (MLP)</option>
+                                            <option value="SSP">Sponsored Scheme Projects (SSP)</option>
+                                            <option value="STS">Short Term Service (STS)</option>
                                             <option value="CUSTOM">Create New Category...</option>
                                         </select>
                                     </div>
@@ -648,7 +688,7 @@ export default function ProjectsPage() {
                                     )}
                                     <div>
                                         <label className="block text-sm font-medium text-secondary-700 mb-1">
-                                            Vertical <span className="text-danger-500">*</span>
+                                            Thrust Area (Areas of Research) <span className="text-danger-500">*</span>
                                         </label>
                                         <select
                                             value={formData.verticalId}
@@ -656,7 +696,7 @@ export default function ProjectsPage() {
                                             className="input-premium"
                                             required
                                         >
-                                            <option value="">Select vertical...</option>
+                                            <option value="">Select thrust area...</option>
                                             {verticals.map(v => (
                                                 <option key={v.id} value={v.id}>{v.name} ({v.code})</option>
                                             ))}

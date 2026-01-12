@@ -35,10 +35,33 @@ enum ProjectStatus {
 }
 
 enum ProjectCategory {
-  GAP   // Grant-in-Aid Projects
-  CNP   // Consultancy Projects  
-  OLP   // Other Lab Projects
-  EFP   // Externally Funded Projects
+  GAP     // Grant-in-Aid Projects
+  CNP     // Consultancy Projects  
+  OLP     // Other Lab Projects
+  EFP     // Externally Funded Projects
+  BMP     // Bilateral Mission Projects
+  FBR     // Focus Basic Research
+  FTC     // Fast Track Commercialization
+  FTT     // Fast Track Translation
+  MMP     // Mission Mode Project
+  NCP     // Niche Creating Projects
+  NMITLI  // NMITLI Projects
+  MLP     // Multi Lab Projects
+  SSP     // Sponsored Scheme Projects
+  STS     // Short Term Service
+}
+
+enum ProposalStatus {
+  DRAFT
+  SUBMITTED           // Scientist submitted
+  BKMD_REVIEW         // Under BKMD review
+  DIRECTOR_REVIEW     // Under Director review
+  DIRECTOR_APPROVED   // Director approved, waiting for RC
+  DIRECTOR_REJECTED   // Director rejected
+  RC_PENDING          // Waiting for RC meeting approval
+  RC_APPROVED         // Approved by RC
+  RC_REJECTED         // Rejected by RC
+  CONVERTED           // Converted to active project
 }
 
 enum Currency {
@@ -146,6 +169,11 @@ model User {
   reportSubmissions     ProjectReport[]     @relation("ReportSubmitter")
   reportApprovalsGiven  ProjectReport[]     @relation("ReportApprover")
   rcAgendaComments      RCAgendaComment[]
+  
+  // Proposal relations
+  proposalsSubmitted    ProjectProposal[]   @relation("ProposalSubmitter")
+  proposalsBkmdReviewed ProjectProposal[]   @relation("BKMDReviewer")
+  proposalsDirectorReviewed ProjectProposal[] @relation("DirectorReviewer")
 }
 
 model RefreshToken {
@@ -174,6 +202,7 @@ model Vertical {
   updatedAt   DateTime  @updatedAt
 
   projects    Project[]
+  proposals   ProjectProposal[]
 
   @@index([code])
 }
@@ -187,6 +216,7 @@ model SpecialArea {
   updatedAt   DateTime  @updatedAt
 
   projects    Project[]
+  proposals   ProjectProposal[]
 }
 
 model Project {
@@ -425,6 +455,7 @@ model RCMeeting {
 
   agendaItems     RCAgendaItem[]
   minutes         RCMinutes[]
+  proposals       ProjectProposal[]
 
   @@index([date])
   @@index([status])
@@ -787,4 +818,68 @@ model RCAgendaComment {
 
   @@index([agendaId])
   @@index([userId])
+}
+
+// ============================================
+// PROJECT PROPOSALS
+// ============================================
+
+model ProjectProposal {
+  id                String          @id @default(uuid())
+  title             String
+  description       String?         @db.Text
+  category          ProjectCategory
+  verticalId        String
+  vertical          Vertical        @relation(fields: [verticalId], references: [id])
+  specialAreaId     String?
+  specialArea       SpecialArea?    @relation(fields: [specialAreaId], references: [id])
+  submittedById     String
+  submittedBy       User            @relation("ProposalSubmitter", fields: [submittedById], references: [id])
+  objectives        String?         @db.Text
+  methodology       String?         @db.Text
+  expectedOutcome   String?         @db.Text
+  proposedStartDate DateTime
+  proposedEndDate   DateTime
+  estimatedBudget   Float?
+  status            ProposalStatus  @default(DRAFT)
+  
+  // Approval workflow
+  bkmdReviewerId     String?
+  bkmdReviewer       User?           @relation("BKMDReviewer", fields: [bkmdReviewerId], references: [id])
+  bkmdReviewedAt     DateTime?
+  bkmdComments       String?
+  
+  directorReviewerId String?
+  directorReviewer   User?           @relation("DirectorReviewer", fields: [directorReviewerId], references: [id])
+  directorReviewedAt DateTime?
+  directorComments   String?
+  
+  rcMeetingId        String?
+  rcMeeting          RCMeeting?      @relation(fields: [rcMeetingId], references: [id])
+  rcComments         String?
+  
+  convertedProjectId String?         @unique
+  
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  
+  documents          ProposalDocument[]
+  
+  @@index([status])
+  @@index([submittedById])
+  @@index([category])
+  @@index([verticalId])
+}
+
+model ProposalDocument {
+  id          String          @id @default(uuid())
+  proposalId  String
+  proposal    ProjectProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  fileName    String
+  filePath    String
+  fileSize    Int
+  mimeType    String
+  uploadedAt  DateTime        @default(now())
+  
+  @@index([proposalId])
 }
