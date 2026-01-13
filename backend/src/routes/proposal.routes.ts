@@ -27,7 +27,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
         if (user.role === UserRole.EMPLOYEE || user.role === UserRole.PROJECT_HEAD) {
             // Scientists/Employees see only their own proposals
             where.submittedById = user.id;
-        } else if (user.role === UserRole.BKMD) {
+        } else if (user.role === UserRole.SUPERVISOR) {
             // BKMD sees SUBMITTED proposals and those they've reviewed
             where.OR = [
                 { status: ProposalStatus.SUBMITTED },
@@ -203,7 +203,7 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
         }
 
         // Only submitter can update drafts
-        if (proposal.submittedById !== user.id && user.role !== UserRole.ADMIN && user.role !== UserRole.SYS_ADMIN) {
+        if (proposal.submittedById !== user.id && user.role !== UserRole.ADMIN && user.role !== UserRole.ADMIN) {
             return res.status(403).json({ error: 'Not authorized to update this proposal' });
         }
 
@@ -269,7 +269,7 @@ router.post('/:id/submit', authenticate, async (req: Request, res: Response) => 
 });
 
 // BKMD review - forward to Director
-router.post('/:id/bkmd-review', authenticate, authorize([UserRole.BKMD, UserRole.ADMIN, UserRole.SYS_ADMIN]), async (req: Request, res: Response) => {
+router.post('/:id/bkmd-review', authenticate, authorize(UserRole.SUPERVISOR, UserRole.ADMIN), async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
         const { id } = req.params;
@@ -311,7 +311,7 @@ router.post('/:id/bkmd-review', authenticate, authorize([UserRole.BKMD, UserRole
 });
 
 // Director review - approve or reject
-router.post('/:id/director-review', authenticate, authorize([UserRole.DIRECTOR, UserRole.ADMIN, UserRole.SYS_ADMIN]), async (req: Request, res: Response) => {
+router.post('/:id/director-review', authenticate, authorize(UserRole.DIRECTOR, UserRole.ADMIN), async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
         const { id } = req.params;
@@ -353,7 +353,7 @@ router.post('/:id/director-review', authenticate, authorize([UserRole.DIRECTOR, 
 });
 
 // RC approval
-router.post('/:id/rc-review', authenticate, authorize([UserRole.DIRECTOR, UserRole.ADMIN, UserRole.SYS_ADMIN]), async (req: Request, res: Response) => {
+router.post('/:id/rc-review', authenticate, authorize(UserRole.DIRECTOR, UserRole.ADMIN), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { comments, action, rcMeetingId } = req.body; // action: 'approve' or 'reject'
@@ -393,7 +393,7 @@ router.post('/:id/rc-review', authenticate, authorize([UserRole.DIRECTOR, UserRo
 });
 
 // Convert approved proposal to project
-router.post('/:id/convert-to-project', authenticate, authorize([UserRole.DIRECTOR, UserRole.ADMIN, UserRole.SYS_ADMIN]), async (req: Request, res: Response) => {
+router.post('/:id/convert-to-project', authenticate, authorize(UserRole.DIRECTOR, UserRole.ADMIN), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -477,11 +477,11 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Proposal not found' });
         }
 
-        if (proposal.submittedById !== user.id && user.role !== UserRole.ADMIN && user.role !== UserRole.SYS_ADMIN) {
+        if (proposal.submittedById !== user.id && user.role !== UserRole.ADMIN && user.role !== UserRole.ADMIN) {
             return res.status(403).json({ error: 'Not authorized to delete this proposal' });
         }
 
-        if (proposal.status !== ProposalStatus.DRAFT && user.role !== UserRole.ADMIN && user.role !== UserRole.SYS_ADMIN) {
+        if (proposal.status !== ProposalStatus.DRAFT && user.role !== UserRole.ADMIN && user.role !== UserRole.ADMIN) {
             return res.status(400).json({ error: 'Only draft proposals can be deleted' });
         }
 
