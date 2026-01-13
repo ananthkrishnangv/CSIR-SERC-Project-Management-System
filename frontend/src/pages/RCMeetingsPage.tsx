@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
+import { useNavigate } from 'react-router-dom';
 import {
     CalendarRegular,
     AddRegular,
@@ -14,6 +15,8 @@ import {
     DismissRegular,
     ArrowDownloadRegular,
     SaveRegular,
+    LightbulbFilamentRegular,
+    PersonRegular,
 } from '@fluentui/react-icons';
 
 interface RCMeeting {
@@ -44,6 +47,27 @@ interface Project {
     status: string;
 }
 
+interface PendingProposal {
+    id: string;
+    title: string;
+    category: string;
+    status: string;
+    estimatedBudget: number | null;
+    proposedStartDate: string;
+    proposedEndDate: string;
+    submittedBy: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        designation: string | null;
+    };
+    vertical: {
+        id: string;
+        name: string;
+        code: string;
+    } | null;
+}
+
 const statusColors: Record<string, string> = {
     SCHEDULED: 'bg-primary-100 text-primary-700',
     IN_PROGRESS: 'bg-warning-100 text-warning-700',
@@ -62,8 +86,10 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export default function RCMeetingsPage() {
     const { accessToken, user } = useAuthStore();
+    const navigate = useNavigate();
     const [meetings, setMeetings] = useState<RCMeeting[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
+    const [pendingProposals, setPendingProposals] = useState<PendingProposal[]>([]);
     const [loading, setLoading] = useState(true);
     const [showScheduleModal, setShowScheduleModal] = useState(false);
     const [showAgendaModal, setShowAgendaModal] = useState(false);
@@ -93,6 +119,7 @@ export default function RCMeetingsPage() {
     useEffect(() => {
         fetchMeetings();
         fetchProjects();
+        fetchPendingProposals();
     }, []);
 
     const fetchMeetings = async () => {
@@ -131,6 +158,21 @@ export default function RCMeetingsPage() {
             }
         } catch (err) {
             console.error('Failed to fetch projects:', err);
+        }
+    };
+
+    const fetchPendingProposals = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/proposals/pending-rc`, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setPendingProposals(data || []);
+            }
+        } catch (err) {
+            console.error('Failed to fetch pending proposals:', err);
+            setPendingProposals([]);
         }
     };
 
@@ -289,7 +331,14 @@ export default function RCMeetingsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-secondary-900">Research Council Meetings</h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-display font-bold text-secondary-900">Research Council Meetings</h1>
+                        {pendingProposals.length > 0 && (
+                            <span className="px-3 py-1 rounded-full text-sm font-medium bg-accent-100 text-accent-700 animate-pulse">
+                                {pendingProposals.length} New Project{pendingProposals.length > 1 ? 's' : ''} for Approval
+                            </span>
+                        )}
+                    </div>
                     <p className="text-secondary-500 mt-1">Manage RC meetings, agendas, and minutes</p>
                 </div>
                 {canManage && (
@@ -328,12 +377,68 @@ export default function RCMeetingsPage() {
                 </div>
                 <div className="premium-card p-6 text-center">
                     <div className="w-12 h-12 mx-auto rounded-xl bg-warning-100 flex items-center justify-center mb-3">
-                        <BookRegular className="w-6 h-6 text-warning-600" />
+                        <LightbulbFilamentRegular className="w-6 h-6 text-warning-600" />
                     </div>
-                    <p className="text-2xl font-bold text-secondary-900">{projects.length}</p>
-                    <p className="text-sm text-secondary-500">Active Projects</p>
+                    <p className="text-2xl font-bold text-secondary-900">{pendingProposals.length}</p>
+                    <p className="text-sm text-secondary-500">Pending Proposals</p>
                 </div>
             </div>
+
+            {/* Pending Proposals for RC Approval */}
+            {pendingProposals.length > 0 && (
+                <div>
+                    <div className="flex items-center gap-3 mb-4">
+                        <h2 className="text-lg font-semibold text-secondary-900">New Projects for Approval</h2>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-accent-100 text-accent-700">
+                            {pendingProposals.length} pending
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {pendingProposals.map(proposal => (
+                            <div
+                                key={proposal.id}
+                                className="premium-card p-5 border-l-4 border-accent-500 hover:shadow-lg transition-shadow cursor-pointer"
+                                onClick={() => navigate(`/proposals/${proposal.id}`)}
+                            >
+                                <div className="flex items-start justify-between mb-3">
+                                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-accent-100 text-accent-700">
+                                        {proposal.category}
+                                    </span>
+                                    <LightbulbFilamentRegular className="w-5 h-5 text-accent-500" />
+                                </div>
+                                <h3 className="font-semibold text-secondary-900 mb-2 line-clamp-2">{proposal.title}</h3>
+                                <div className="space-y-1 text-sm text-secondary-600">
+                                    <p className="flex items-center gap-2">
+                                        <PersonRegular className="w-4 h-4" />
+                                        {proposal.submittedBy.firstName} {proposal.submittedBy.lastName}
+                                    </p>
+                                    {proposal.vertical && (
+                                        <p className="text-xs text-secondary-500">
+                                            {proposal.vertical.name}
+                                        </p>
+                                    )}
+                                    {proposal.estimatedBudget && (
+                                        <p className="font-medium text-secondary-900">
+                                            ₹{(proposal.estimatedBudget / 100000).toFixed(2)} Lakhs
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="mt-3 pt-3 border-t border-secondary-100">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigate(`/proposals/${proposal.id}`);
+                                        }}
+                                        className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+                                    >
+                                        Review Proposal <ArrowRightRegular className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Upcoming Meetings */}
             {upcomingMeetings.length > 0 && (
