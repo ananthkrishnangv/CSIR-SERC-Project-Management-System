@@ -68,10 +68,15 @@ export default function ProjectDetailPage() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'team' | 'budget' | 'timeline'>('overview');
     const [showUploadModal, setShowUploadModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [uploadForm, setUploadForm] = useState({ title: '', type: 'REPORT', description: '' });
+    const [editForm, setEditForm] = useState({ title: '', description: '', status: '', progress: 0, startDate: '', endDate: '' });
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const canEdit = ['ADMIN', 'DIRECTOR', 'SUPERVISOR', 'PROJECT_HEAD'].includes(user?.role || '');
 
     useEffect(() => {
         fetchProject();
@@ -154,6 +159,51 @@ export default function ProjectDetailPage() {
         }
     };
 
+    const openEditModal = () => {
+        if (!project) return;
+        setEditForm({
+            title: project.title,
+            description: project.description || '',
+            status: project.status,
+            progress: project.progress,
+            startDate: project.startDate.split('T')[0],
+            endDate: project.endDate.split('T')[0],
+        });
+        setShowEditModal(true);
+    };
+
+    const handleUpdateProject = async () => {
+        if (!project) return;
+        setSaving(true);
+        try {
+            const res = await fetch(`/api/projects/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    title: editForm.title,
+                    description: editForm.description,
+                    status: editForm.status,
+                    progress: Number(editForm.progress),
+                    startDate: editForm.startDate,
+                    endDate: editForm.endDate,
+                }),
+            });
+            if (res.ok) {
+                setShowEditModal(false);
+                fetchProject();
+            } else {
+                console.error('Failed to update project');
+            }
+        } catch (error) {
+            console.error('Update failed:', error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const daysRemaining = project ? Math.ceil((new Date(project.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
     const totalBudget = project?.budgets?.reduce((sum, b) => sum + b.amountINR, 0) || 0;
     const totalUtilized = project?.budgets?.reduce((sum, b) => sum + b.utilized, 0) || 0;
@@ -206,10 +256,12 @@ export default function ProjectDetailPage() {
                     <h1 className="text-2xl font-display font-bold text-secondary-900">{project.title}</h1>
                     <p className="text-secondary-500 mt-1">{project.vertical.name}</p>
                 </div>
-                <button className="btn-secondary flex items-center gap-2">
-                    <EditRegular className="w-5 h-5" />
-                    Edit Project
-                </button>
+                {canEdit && (
+                    <button onClick={openEditModal} className="btn-secondary flex items-center gap-2">
+                        <EditRegular className="w-5 h-5" />
+                        Edit Project
+                    </button>
+                )}
             </div>
 
             {/* Quick Stats */}
@@ -475,8 +527,8 @@ export default function ProjectDetailPage() {
                                 <div key={m.id} className="flex items-start gap-4">
                                     <div className="flex flex-col items-center">
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${m.status === 'COMPLETED' ? 'bg-success-500 text-white' :
-                                                m.status === 'IN_PROGRESS' ? 'bg-primary-500 text-white' :
-                                                    'bg-secondary-200 text-secondary-500'
+                                            m.status === 'IN_PROGRESS' ? 'bg-primary-500 text-white' :
+                                                'bg-secondary-200 text-secondary-500'
                                             }`}>
                                             {m.status === 'COMPLETED' ? (
                                                 <CheckmarkCircleRegular className="w-5 h-5" />
@@ -577,6 +629,103 @@ export default function ProjectDetailPage() {
                                 disabled={uploading || !selectedFile}
                             >
                                 {uploading ? 'Uploading...' : 'Upload'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Project Modal */}
+            {showEditModal && (
+                <div className="fixed inset-0 bg-secondary-900/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-premium-lg w-full max-w-lg animate-scale-in">
+                        <div className="flex items-center justify-between p-6 border-b border-secondary-200">
+                            <h3 className="text-xl font-semibold text-secondary-900">Edit Project</h3>
+                            <button
+                                onClick={() => setShowEditModal(false)}
+                                className="p-2 hover:bg-secondary-100 rounded-lg"
+                            >
+                                <DismissRegular className="w-5 h-5 text-secondary-500" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
+                            <div>
+                                <label className="block text-sm font-medium text-secondary-700 mb-1">Title *</label>
+                                <input
+                                    type="text"
+                                    className="input-premium"
+                                    value={editForm.title}
+                                    onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-secondary-700 mb-1">Description</label>
+                                <textarea
+                                    className="input-premium"
+                                    rows={3}
+                                    value={editForm.description}
+                                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-secondary-700 mb-1">Status</label>
+                                    <select
+                                        className="input-premium"
+                                        value={editForm.status}
+                                        onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                                    >
+                                        <option value="ACTIVE">Active</option>
+                                        <option value="COMPLETED">Completed</option>
+                                        <option value="ON_HOLD">On Hold</option>
+                                        <option value="PENDING_APPROVAL">Pending Approval</option>
+                                        <option value="CANCELLED">Cancelled</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-secondary-700 mb-1">Progress (%)</label>
+                                    <input
+                                        type="number"
+                                        className="input-premium"
+                                        min="0"
+                                        max="100"
+                                        value={editForm.progress}
+                                        onChange={e => setEditForm({ ...editForm, progress: Number(e.target.value) })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-secondary-700 mb-1">Start Date</label>
+                                    <input
+                                        type="date"
+                                        className="input-premium"
+                                        value={editForm.startDate}
+                                        onChange={e => setEditForm({ ...editForm, startDate: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-secondary-700 mb-1">End Date</label>
+                                    <input
+                                        type="date"
+                                        className="input-premium"
+                                        value={editForm.endDate}
+                                        onChange={e => setEditForm({ ...editForm, endDate: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 p-6 border-t border-secondary-200">
+                            <button onClick={() => setShowEditModal(false)} className="flex-1 btn-secondary">
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleUpdateProject}
+                                className="flex-1 btn-primary"
+                                disabled={saving || !editForm.title}
+                            >
+                                {saving ? 'Saving...' : 'Save Changes'}
                             </button>
                         </div>
                     </div>

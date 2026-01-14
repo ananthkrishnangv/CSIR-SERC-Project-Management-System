@@ -544,7 +544,6 @@ export const getAgendaComments = async (req: AuthenticatedRequest, res: Response
                         lastName: true,
                         role: true,
                         designation: true,
-                        profilePhoto: true,
                         email: true,
                     },
                 },

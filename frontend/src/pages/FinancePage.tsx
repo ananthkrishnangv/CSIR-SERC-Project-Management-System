@@ -142,7 +142,14 @@ export default function FinancePage() {
             });
             if (projRes.ok) {
                 const data = await projRes.json();
-                setProjects(data.data || data.projects || data || []);
+                // Handle multiple response formats
+                const projectList = data.data || data.projects || data;
+                if (Array.isArray(projectList)) {
+                    setProjects(projectList);
+                } else {
+                    console.warn('Unexpected projects format:', data);
+                    setProjects([]);
+                }
             }
         } catch (err) {
             console.error('Failed to fetch data:', err);
