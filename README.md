@@ -19,6 +19,28 @@
 
 ---
 
+## 🆕 Recent Updates (January 2026)
+
+### New Features
+- **Project Edit Modal** - Edit project details directly from project detail page
+- **Chart Export** - Export dashboard and report charts as PNG images
+- **Project Journal** - New "Journal" tab for project comments and notes
+- **Profile Link** - Quick access to user profile from dropdown menu
+
+### Bug Fixes
+- Fixed budget request project selector not loading projects
+- Fixed TypeScript configuration for Vite imports
+- Fixed rate limiter X-Forwarded-For error behind nginx proxy
+- Fixed API_BASE fallback URLs for production environment
+
+### Backend Improvements
+- Added `ProjectComment` model for project journals
+- Added comment API routes (GET/POST/DELETE)
+- Added validate:false to rate limiter for proxy compatibility
+- Improved trust proxy configuration
+
+---
+
 ## 📋 Overview
 
 The **CSIR-SERC Project Management Portal** is a full-stack web application designed to streamline the management of research projects at the Council of Scientific and Industrial Research - Structural Engineering Research Centre, Chennai. It provides end-to-end project lifecycle management with features tailored for research institutions.

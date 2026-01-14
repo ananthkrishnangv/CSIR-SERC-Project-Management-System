@@ -142,3 +142,43 @@
 - [x] Phase 4: Project Comments/Journal Tab (ProjectDetailPage + backend API)
 - [x] Phase 5: User Profile Page Link (DashboardLayout dropdown)
 
+---
+
+## 2026-01-14 - Backend Infrastructure Fixes
+
+### Rate Limiter X-Forwarded-For Fix
+**Files Modified:**
+- `backend/src/index.ts`
+
+**Changes:**
+- Added `validate: false` to express-rate-limit configuration
+- Prevents `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` error when behind nginx proxy
+- Trust proxy already configured for production/TRUST_PROXY=true environments
+
+### Server Deployment
+**Server:** 10.10.200.36
+**Path:** `/opt/csir-serc-portal/`
+
+**Deployment Steps Performed:**
+1. Frontend dist synced to `/opt/csir-serc-portal/frontend/dist/`
+2. Backend source synced to `/opt/csir-serc-portal/backend/`
+3. Prisma client regenerated
+4. PM2 process restarted (`csir-serc-portal`)
+5. TRUST_PROXY=true added to server .env
+
+---
+
+## Known Issues
+
+### API Authentication (401 Errors)
+- Protected endpoints returning 401 Unauthorized
+- Browser session tokens may be invalid/expired
+- Database contains valid admin users
+- `/api/verticals` returns data (confirms API working)
+- Requires user to log out and log back in to refresh tokens
+
+---
+
+## GitHub Repository
+- **URL:** https://github.com/ananthkrishnangv/CSIR-SERC-Project-Management-System
+- **Latest Commit:** `23484f0` (2026-01-14)
