@@ -486,3 +486,242 @@ export const getRCMembers = async (req: AuthenticatedRequest, res: Response): Pr
         res.status(500).json({ error: 'Failed to fetch RC members' });
     }
 };
+
+// Get agenda items for a meeting
+export const getAgendaItems = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        const agendaItems = await prisma.rCAgendaItem.findMany({
+            where: { meetingId: id },
+            orderBy: { itemNumber: 'asc' },
+            include: {
+                project: {
+                    select: {
+                        id: true,
+                        code: true,
+                        title: true,
+                        status: true,
+                        progress: true,
+                    },
+                },
+                comments: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                role: true,
+                                designation: true,
+                            },
+                        },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                },
+            },
+        });
+
+        res.json(agendaItems);
+    } catch (error) {
+        console.error('Get agenda items error:', error);
+        res.status(500).json({ error: 'Failed to fetch agenda items' });
+    }
+};
+
+// Get comments for an agenda item
+export const getAgendaComments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { itemId } = req.params;
+
+        const comments = await prisma.rCAgendaComment.findMany({
+            where: { agendaId: itemId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        role: true,
+                        designation: true,
+                        profilePhoto: true,
+                        email: true,
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        res.json(comments);
+    } catch (error) {
+        console.error('Get agenda comments error:', error);
+        res.status(500).json({ error: 'Failed to fetch comments' });
+    }
+};
+
+// Add a comment to an agenda item
+export const addAgendaComment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { itemId } = req.params;
+        const { content, isRecommendation } = req.body;
+
+        if (!content || content.trim().length === 0) {
+            res.status(400).json({ error: 'Comment content is required' });
+            return;
+        }
+
+        const comment = await prisma.rCAgendaComment.create({
+            data: {
+                agendaId: itemId,
+                userId: req.user!.userId,
+                content: content.trim(),
+                isRecommendation: isRecommendation || false,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        role: true,
+                        designation: true,
+                    },
+                },
+            },
+        });
+
+        res.status(201).json(comment);
+    } catch (error) {
+        console.error('Add agenda comment error:', error);
+        res.status(500).json({ error: 'Failed to add comment' });
+    }
+};
+
+// Delete a comment
+export const deleteAgendaComment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { commentId } = req.params;
+
+        const comment = await prisma.rCAgendaComment.findUnique({
+            where: { id: commentId },
+        });
+
+        if (!comment) {
+            res.status(404).json({ error: 'Comment not found' });
+            return;
+        }
+
+        // Only owner or admin can delete
+        if (comment.userId !== req.user?.userId && req.user?.role !== 'ADMIN') {
+            res.status(403).json({ error: 'Unauthorized to delete this comment' });
+            return;
+        }
+
+        await prisma.rCAgendaComment.delete({
+            where: { id: commentId },
+        });
+
+        res.json({ message: 'Comment deleted successfully' });
+    } catch (error) {
+        console.error('Delete agenda comment error:', error);
+        res.status(500).json({ error: 'Failed to delete comment' });
+    }
+};
+
+// Finalize an agenda item after review
+export const finalizeAgendaItem = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { itemId } = req.params;
+        const { remarks, status } = req.body; // status: 'Approved', 'Deferred', 'Rejected'
+
+        const agendaItem = await prisma.rCAgendaItem.update({
+            where: { id: itemId },
+            data: {
+                status: status || 'Finalized',
+                remarks: remarks || null,
+            },
+        });
+
+        res.json(agendaItem);
+    } catch (error) {
+        console.error('Finalize agenda item error:', error);
+        res.status(500).json({ error: 'Failed to finalize agenda item' });
+    }
+};
+
+// Generate agenda PDF
+export const generateAgendaPDF = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        const meeting = await prisma.rCMeeting.findUnique({
+            where: { id },
+            include: {
+                agendaItems: {
+                    orderBy: { itemNumber: 'asc' },
+                    include: {
+                        project: {
+                            include: {
+                                vertical: true,
+                                projectHead: {
+                                    select: { firstName: true, lastName: true, designation: true },
+                                },
+                            },
+                        },
+                        comments: {
+                            include: {
+                                user: {
+                                    select: { firstName: true, lastName: true, role: true },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!meeting) {
+            res.status(404).json({ error: 'Meeting not found' });
+            return;
+        }
+
+        // Generate HTML content for PDF (can be processed by client-side jsPDF or server-side puppeteer)
+        const pdfData = {
+            meeting: {
+                title: meeting.title,
+                number: meeting.meetingNumber,
+                date: meeting.date,
+                venue: meeting.venue,
+            },
+            agendaItems: meeting.agendaItems.map(item => ({
+                itemNumber: item.itemNumber,
+                title: item.title,
+                type: item.type,
+                presenter: item.presenter,
+                description: item.description,
+                status: item.status,
+                remarks: item.remarks,
+                project: item.project ? {
+                    code: item.project.code,
+                    title: item.project.title,
+                    pi: `${item.project.projectHead?.firstName} ${item.project.projectHead?.lastName}`,
+                    vertical: item.project.vertical?.name,
+                } : null,
+                comments: item.comments.map(c => ({
+                    content: c.content,
+                    author: `${c.user.firstName} ${c.user.lastName}`,
+                    role: c.user.role,
+                    isRecommendation: c.isRecommendation,
+                    date: c.createdAt,
+                })),
+            })),
+            generatedAt: new Date().toISOString(),
+            generatedBy: req.user?.email,
+        };
+
+        res.json(pdfData);
+    } catch (error) {
+        console.error('Generate agenda PDF error:', error);
+        res.status(500).json({ error: 'Failed to generate PDF data' });
+    }
+};
