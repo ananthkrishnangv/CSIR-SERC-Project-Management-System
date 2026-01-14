@@ -68,7 +68,77 @@
 
 ---
 
-## Pending Features (Phases 3-5)
-- [ ] Phase 3: Chart Export as Image (ReportsPage, DashboardPage)
-- [ ] Phase 4: Project Comments/Journal Tab
-- [ ] Phase 5: User Profile Page
+### Phase 3: Chart Export as Image ✅
+**Files Modified:**
+- `frontend/src/pages/ReportsPage.tsx`
+- `frontend/src/pages/DashboardPage.tsx`
+
+**Changes:**
+- Added `useRef` import and chart refs (`categoryChartRef`, `progressChartRef`, `budgetChartRef`)
+- Added `ImageRegular` icon import from @fluentui/react-icons
+- Implemented `saveChartAsImage()` function using Chart.js toBase64Image API
+- Added export buttons with hover effects to all charts:
+  - ReportsPage: Projects by Category (Doughnut), Monthly Progress (Bar), Budget Utilization (Bar)
+  - DashboardPage: Project Status (Doughnut), Projects by Category (Bar)
+
+---
+
+### Phase 4: Project Comments/Journal Tab ✅
+**Files Modified:**
+- `backend/prisma/schema.prisma`
+- `backend/src/routes/project.routes.ts`
+- `backend/src/controllers/project.controller.ts`
+- `frontend/src/pages/ProjectDetailPage.tsx`
+
+**Backend Changes:**
+- Added `ProjectComment` model with fields: id, projectId, userId, content, category, isPrivate, attachments, timestamps
+- Added `comments` relation to `Project` model
+- Added `projectComments` relation to `User` model
+- Added comment API routes:
+  - `GET /api/projects/:id/comments`
+  - `POST /api/projects/:id/comments`
+  - `DELETE /api/projects/:id/comments/:commentId`
+- Implemented controller functions: `getProjectComments`, `addProjectComment`, `deleteProjectComment`
+- Category types: UPDATE, MEETING_NOTE, DECISION, ISSUE, MILESTONE, RC_COMMENT
+
+**Frontend Changes:**
+- Added 'journal' tab to ProjectDetailPage tabs
+- Added comments state (array of comments with user info)
+- Added newComment, commentCategory, addingComment state
+- Implemented `fetchComments()` and `handleAddComment()` functions
+- Created Journal tab UI with:
+  - Category selector dropdown
+  - Comment input textarea
+  - Add Entry button
+  - Comments list with user avatar, name, category badge, timestamp
+  - Color-coded category badges
+
+---
+
+### Phase 5: User Profile Page ✅
+**Files Modified:**
+- `frontend/src/layouts/DashboardLayout.tsx`
+
+**Changes:**
+- Added "My Profile" link to user dropdown menu (before Settings)
+- Uses PersonRegular icon
+- Links to `/profile` route (ProfilePage already existed with full functionality)
+
+**Previously Existing (ProfilePage.tsx - 674 lines):**
+- Complete user profile display with tabs
+- Edit profile functionality with form fields
+- Change password functionality
+- Login history display
+- Project memberships view
+- Documents uploaded view
+- 2FA toggle option
+
+---
+
+## All Features Completed ✅
+- [x] Phase 1: Project Edit Modal (ProjectDetailPage)
+- [x] Phase 2: Budget Request Project Select Fix (FinancePage)
+- [x] Phase 3: Chart Export as Image (ReportsPage, DashboardPage)
+- [x] Phase 4: Project Comments/Journal Tab (ProjectDetailPage + backend API)
+- [x] Phase 5: User Profile Page Link (DashboardLayout dropdown)
+

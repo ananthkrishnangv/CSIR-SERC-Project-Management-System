@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement, Filler } from 'chart.js';
 import { Doughnut, Bar, Line } from 'react-chartjs-2';
@@ -14,6 +14,7 @@ import {
     ArrowTrendingRegular,
     BuildingMultipleRegular,
     CheckmarkCircleRegular,
+    ImageRegular,
 } from '@fluentui/react-icons';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement, Filler);
@@ -37,6 +38,25 @@ export default function ReportsPage() {
     const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'finance' | 'rc' | 'custom'>('dashboard');
     const [dateRange, setDateRange] = useState({ from: '', to: '' });
     const [exporting, setExporting] = useState(false);
+
+    // Chart refs for export functionality
+    const categoryChartRef = useRef<any>(null);
+    const progressChartRef = useRef<any>(null);
+    const budgetChartRef = useRef<any>(null);
+
+    // Save chart as PNG image
+    const saveChartAsImage = (chartRef: any, filename: string) => {
+        if (chartRef?.current) {
+            const chart = chartRef.current;
+            const url = chart.toBase64Image('image/png', 1);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${filename}_${new Date().toISOString().split('T')[0]}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
 
     const [stats, setStats] = useState<ReportStats>({
         totalProjects: 0,
@@ -321,10 +341,19 @@ export default function ReportsPage() {
                     {/* Charts Row */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="premium-card p-6">
-                            <h3 className="text-lg font-semibold text-secondary-900 mb-4">Projects by Category</h3>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-secondary-900">Projects by Category</h3>
+                                <button
+                                    onClick={() => saveChartAsImage(categoryChartRef, 'projects_by_category')}
+                                    className="p-2 text-secondary-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                    title="Save as Image"
+                                >
+                                    <ImageRegular className="w-5 h-5" />
+                                </button>
+                            </div>
                             <div className="flex items-center gap-8">
                                 <div className="w-48 h-48">
-                                    <Doughnut data={categoryChartData} options={{ cutout: '65%', plugins: { legend: { display: false } } }} />
+                                    <Doughnut ref={categoryChartRef} data={categoryChartData} options={{ cutout: '65%', plugins: { legend: { display: false } } }} />
                                 </div>
                                 <div className="flex-1 space-y-3">
                                     {stats.projectsByCategory.map((cat, i) => (
@@ -341,18 +370,36 @@ export default function ReportsPage() {
                         </div>
 
                         <div className="premium-card p-6">
-                            <h3 className="text-lg font-semibold text-secondary-900 mb-4">Monthly Project Progress</h3>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-secondary-900">Monthly Project Progress</h3>
+                                <button
+                                    onClick={() => saveChartAsImage(progressChartRef, 'monthly_progress')}
+                                    className="p-2 text-secondary-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                    title="Save as Image"
+                                >
+                                    <ImageRegular className="w-5 h-5" />
+                                </button>
+                            </div>
                             <div className="h-64">
-                                <Bar data={progressChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
+                                <Bar ref={progressChartRef} data={progressChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
                             </div>
                         </div>
                     </div>
 
                     {/* Budget Utilization */}
                     <div className="premium-card p-6">
-                        <h3 className="text-lg font-semibold text-secondary-900 mb-4">Budget Utilization by Category (₹ Lakhs)</h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-secondary-900">Budget Utilization by Category (₹ Lakhs)</h3>
+                            <button
+                                onClick={() => saveChartAsImage(budgetChartRef, 'budget_utilization')}
+                                className="p-2 text-secondary-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                title="Save as Image"
+                            >
+                                <ImageRegular className="w-5 h-5" />
+                            </button>
+                        </div>
                         <div className="h-64">
-                            <Bar data={budgetChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
+                            <Bar ref={budgetChartRef} data={budgetChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} />
                         </div>
                     </div>
 

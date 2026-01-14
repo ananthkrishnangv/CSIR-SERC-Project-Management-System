@@ -646,3 +646,136 @@ export const updateMilestone = async (req: AuthenticatedRequest, res: Response):
         res.status(500).json({ error: 'Failed to update milestone' });
     }
 };
+
+// Get project comments/journal
+export const getProjectComments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { category, limit = '50' } = req.query;
+
+        const where: any = { projectId: id };
+
+        // Filter by category if provided
+        if (category && category !== 'ALL') {
+            where.category = category;
+        }
+
+        // Filter private comments based on user role
+        const { user } = req;
+        const fullAccessRoles = ['ADMIN', 'SUPERVISOR', 'DIRECTOR', 'DIRECTOR_GENERAL'];
+        if (!fullAccessRoles.includes(user?.role || '')) {
+            // Non-admins can only see public comments or their own private comments
+            where.OR = [
+                { isPrivate: false },
+                { userId: user?.userId },
+            ];
+        }
+
+        const comments = await prisma.projectComment.findMany({
+            where,
+            take: parseInt(limit as string, 10),
+            orderBy: { createdAt: 'desc' },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        designation: true,
+                        role: true,
+                    },
+                },
+            },
+        });
+
+        res.json(comments);
+    } catch (error) {
+        console.error('Get project comments error:', error);
+        res.status(500).json({ error: 'Failed to fetch comments' });
+    }
+};
+
+// Add project comment
+export const addProjectComment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { content, category = 'UPDATE', isPrivate = false, attachments } = req.body;
+
+        if (!content || content.trim().length === 0) {
+            res.status(400).json({ error: 'Comment content is required' });
+            return;
+        }
+
+        // Check project exists
+        const project = await prisma.project.findUnique({
+            where: { id },
+        });
+
+        if (!project) {
+            res.status(404).json({ error: 'Project not found' });
+            return;
+        }
+
+        const comment = await prisma.projectComment.create({
+            data: {
+                projectId: id,
+                userId: req.user!.userId,
+                content: content.trim(),
+                category,
+                isPrivate,
+                attachments: attachments || null,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        designation: true,
+                        role: true,
+                    },
+                },
+            },
+        });
+
+        res.status(201).json(comment);
+    } catch (error) {
+        console.error('Add project comment error:', error);
+        res.status(500).json({ error: 'Failed to add comment' });
+    }
+};
+
+// Delete project comment
+export const deleteProjectComment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        const { id, commentId } = req.params;
+        const { user } = req;
+
+        const comment = await prisma.projectComment.findUnique({
+            where: { id: commentId },
+        });
+
+        if (!comment) {
+            res.status(404).json({ error: 'Comment not found' });
+            return;
+        }
+
+        // Only comment author or admins can delete
+        const canDelete = ['ADMIN', 'DIRECTOR', 'SUPERVISOR'].includes(user?.role || '') ||
+            comment.userId === user?.userId;
+
+        if (!canDelete) {
+            res.status(403).json({ error: 'Not authorized to delete this comment' });
+            return;
+        }
+
+        await prisma.projectComment.delete({
+            where: { id: commentId },
+        });
+
+        res.json({ message: 'Comment deleted successfully' });
+    } catch (error) {
+        console.error('Delete project comment error:', error);
+        res.status(500).json({ error: 'Failed to delete comment' });
+    }
+};

@@ -417,6 +417,14 @@ export default function DashboardLayout() {
                                             <p className="text-xs text-secondary-500">{user?.email}</p>
                                         </div>
                                         <NavLink
+                                            to="/profile"
+                                            onClick={() => setUserMenuOpen(false)}
+                                            className="flex items-center gap-3 px-4 py-2 text-secondary-700 hover:bg-secondary-50 transition-colors"
+                                        >
+                                            <PersonRegular className="w-5 h-5" />
+                                            <span>My Profile</span>
+                                        </NavLink>
+                                        <NavLink
                                             to="/settings"
                                             onClick={() => setUserMenuOpen(false)}
                                             className="flex items-center gap-3 px-4 py-2 text-secondary-700 hover:bg-secondary-50 transition-colors"

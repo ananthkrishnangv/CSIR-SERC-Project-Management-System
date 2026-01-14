@@ -169,6 +169,7 @@ model User {
   reportSubmissions     ProjectReport[]     @relation("ReportSubmitter")
   reportApprovalsGiven  ProjectReport[]     @relation("ReportApprover")
   rcAgendaComments      RCAgendaComment[]
+  projectComments       ProjectComment[]  @relation("ProjectComments")
   
   // Proposal relations
   proposalsSubmitted    ProjectProposal[]   @relation("ProposalSubmitter")
@@ -254,12 +255,33 @@ model Project {
   cashFlows         CashFlow[]
   projectReports    ProjectReport[]
   budgetRequests    BudgetRequest[]
+  comments          ProjectComment[]
 
   @@index([code])
   @@index([category])
   @@index([status])
   @@index([verticalId])
   @@index([projectHeadId])
+}
+
+// Project Comments for Journal/Updates
+model ProjectComment {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation("ProjectComments", fields: [userId], references: [id])
+  content     String
+  category    String   @default("UPDATE") // UPDATE, MEETING_NOTE, DECISION, ISSUE, MILESTONE, RC_COMMENT
+  isPrivate   Boolean  @default(false)    // Only visible to project team and admins
+  attachments Json?                        // Optional file attachments
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([category])
+  @@index([createdAt])
 }
 
 model ProjectStaff {

@@ -26,4 +26,9 @@ router.delete('/:id/staff/:userId', authorize('ADMIN', 'DIRECTOR', 'SUPERVISOR',
 router.post('/:id/milestones', authorize('ADMIN', 'DIRECTOR', 'SUPERVISOR', 'PROJECT_HEAD'), projectController.addMilestone);
 router.put('/:id/milestones/:milestoneId', authorize('ADMIN', 'DIRECTOR', 'SUPERVISOR', 'PROJECT_HEAD'), projectController.updateMilestone);
 
+// Project Comments/Journal
+router.get('/:id/comments', projectController.getProjectComments);
+router.post('/:id/comments', authorize('ADMIN', 'DIRECTOR', 'SUPERVISOR', 'PROJECT_HEAD', 'RC_MEMBER'), projectController.addProjectComment);
+router.delete('/:id/comments/:commentId', authorize('ADMIN', 'DIRECTOR', 'SUPERVISOR', 'PROJECT_HEAD'), projectController.deleteProjectComment);
+
 export default router;

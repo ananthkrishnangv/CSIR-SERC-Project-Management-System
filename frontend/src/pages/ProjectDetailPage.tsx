@@ -66,7 +66,7 @@ export default function ProjectDetailPage() {
     const { accessToken, user } = useAuthStore();
     const [project, setProject] = useState<Project | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'team' | 'budget' | 'timeline'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'team' | 'budget' | 'timeline' | 'journal'>('overview');
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -75,6 +75,19 @@ export default function ProjectDetailPage() {
     const [uploadForm, setUploadForm] = useState({ title: '', type: 'REPORT', description: '' });
     const [editForm, setEditForm] = useState({ title: '', description: '', status: '', progress: 0, startDate: '', endDate: '' });
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Comments/Journal state
+    const [comments, setComments] = useState<Array<{
+        id: string;
+        content: string;
+        category: string;
+        isPrivate: boolean;
+        createdAt: string;
+        user: { id: string; firstName: string; lastName: string; designation?: string; role: string };
+    }>>([]);
+    const [newComment, setNewComment] = useState('');
+    const [commentCategory, setCommentCategory] = useState('UPDATE');
+    const [addingComment, setAddingComment] = useState(false);
 
     const canEdit = ['ADMIN', 'DIRECTOR', 'SUPERVISOR', 'PROJECT_HEAD'].includes(user?.role || '');
 
@@ -97,6 +110,43 @@ export default function ProjectDetailPage() {
             console.error('Failed to fetch project:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchComments = async () => {
+        try {
+            const res = await fetch(`/api/projects/${id}/comments`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setComments(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch comments:', error);
+        }
+    };
+
+    const handleAddComment = async () => {
+        if (!newComment.trim()) return;
+        setAddingComment(true);
+        try {
+            const res = await fetch(`/api/projects/${id}/comments`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ content: newComment, category: commentCategory }),
+            });
+            if (res.ok) {
+                setNewComment('');
+                fetchComments();
+            }
+        } catch (error) {
+            console.error('Failed to add comment:', error);
+        } finally {
+            setAddingComment(false);
         }
     };
 
@@ -316,10 +366,13 @@ export default function ProjectDetailPage() {
 
             {/* Tabs */}
             <div className="flex gap-1 bg-secondary-100 p-1 rounded-xl w-fit">
-                {(['overview', 'documents', 'team', 'budget', 'timeline'] as const).map(tab => (
+                {(['overview', 'documents', 'team', 'budget', 'timeline', 'journal'] as const).map(tab => (
                     <button
                         key={tab}
-                        onClick={() => setActiveTab(tab)}
+                        onClick={() => {
+                            setActiveTab(tab);
+                            if (tab === 'journal') fetchComments();
+                        }}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${activeTab === tab ? 'bg-white shadow-sm text-primary-600' : 'text-secondary-600 hover:text-secondary-900'
                             }`}
                     >
@@ -390,347 +443,436 @@ export default function ProjectDetailPage() {
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
 
-            {activeTab === 'documents' && (
-                <div className="premium-card p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg font-semibold text-secondary-900">Project Documents</h3>
-                        <button
-                            onClick={() => setShowUploadModal(true)}
-                            className="btn-primary flex items-center gap-2"
-                        >
-                            <AddRegular className="w-5 h-5" />
-                            Upload Document
-                        </button>
+            {
+                activeTab === 'documents' && (
+                    <div className="premium-card p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-semibold text-secondary-900">Project Documents</h3>
+                            <button
+                                onClick={() => setShowUploadModal(true)}
+                                className="btn-primary flex items-center gap-2"
+                            >
+                                <AddRegular className="w-5 h-5" />
+                                Upload Document
+                            </button>
+                        </div>
+                        {project.documents && project.documents.length > 0 ? (
+                            <div className="space-y-3">
+                                {project.documents.map(doc => (
+                                    <div key={doc.id} className="flex items-center gap-4 p-4 bg-secondary-50 rounded-xl hover:bg-primary-50 transition-colors">
+                                        <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
+                                            <DocumentRegular className="w-5 h-5 text-primary-600" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="font-medium text-secondary-900">{doc.title}</p>
+                                            <p className="text-sm text-secondary-500">
+                                                {doc.type} • {formatFileSize(doc.fileSize)} • {new Date(doc.createdAt).toLocaleDateString('en-IN')}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleDownload(doc)}
+                                            className="p-2 hover:bg-secondary-200 rounded-lg"
+                                        >
+                                            <ArrowDownloadRegular className="w-5 h-5 text-secondary-500" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12">
+                                <DocumentRegular className="w-12 h-12 text-secondary-300 mx-auto mb-3" />
+                                <p className="text-secondary-500">No documents uploaded yet</p>
+                            </div>
+                        )}
                     </div>
-                    {project.documents && project.documents.length > 0 ? (
-                        <div className="space-y-3">
-                            {project.documents.map(doc => (
-                                <div key={doc.id} className="flex items-center gap-4 p-4 bg-secondary-50 rounded-xl hover:bg-primary-50 transition-colors">
-                                    <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
-                                        <DocumentRegular className="w-5 h-5 text-primary-600" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="font-medium text-secondary-900">{doc.title}</p>
-                                        <p className="text-sm text-secondary-500">
-                                            {doc.type} • {formatFileSize(doc.fileSize)} • {new Date(doc.createdAt).toLocaleDateString('en-IN')}
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => handleDownload(doc)}
-                                        className="p-2 hover:bg-secondary-200 rounded-lg"
-                                    >
-                                        <ArrowDownloadRegular className="w-5 h-5 text-secondary-500" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-12">
-                            <DocumentRegular className="w-12 h-12 text-secondary-300 mx-auto mb-3" />
-                            <p className="text-secondary-500">No documents uploaded yet</p>
-                        </div>
-                    )}
-                </div>
-            )}
+                )
+            }
 
-            {activeTab === 'team' && (
-                <div className="premium-card p-6">
-                    <h3 className="text-lg font-semibold text-secondary-900 mb-6">Team Members</h3>
-                    <div className="space-y-3">
-                        {/* Project Head */}
-                        <div className="flex items-center gap-4 p-4 bg-primary-50 rounded-xl border border-primary-200">
-                            <div className="w-12 h-12 rounded-full bg-gradient-premium flex items-center justify-center text-white font-semibold">
-                                {project.projectHead.firstName[0]}{project.projectHead.lastName[0]}
-                            </div>
-                            <div className="flex-1">
-                                <p className="font-medium text-secondary-900">
-                                    {project.projectHead.firstName} {project.projectHead.lastName}
-                                </p>
-                                <p className="text-sm text-secondary-500">Project Head / PI</p>
-                            </div>
-                            <span className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-xs font-medium">Lead</span>
-                        </div>
-                        {/* Staff */}
-                        {project.staff?.map(s => (
-                            <div key={s.user.id} className="flex items-center gap-4 p-4 bg-secondary-50 rounded-xl">
-                                <div className="w-12 h-12 rounded-full bg-secondary-200 flex items-center justify-center text-secondary-600 font-semibold">
-                                    {s.user.firstName[0]}{s.user.lastName[0]}
+            {
+                activeTab === 'team' && (
+                    <div className="premium-card p-6">
+                        <h3 className="text-lg font-semibold text-secondary-900 mb-6">Team Members</h3>
+                        <div className="space-y-3">
+                            {/* Project Head */}
+                            <div className="flex items-center gap-4 p-4 bg-primary-50 rounded-xl border border-primary-200">
+                                <div className="w-12 h-12 rounded-full bg-gradient-premium flex items-center justify-center text-white font-semibold">
+                                    {project.projectHead.firstName[0]}{project.projectHead.lastName[0]}
                                 </div>
                                 <div className="flex-1">
                                     <p className="font-medium text-secondary-900">
-                                        {s.user.firstName} {s.user.lastName}
+                                        {project.projectHead.firstName} {project.projectHead.lastName}
                                     </p>
-                                    <p className="text-sm text-secondary-500">{s.user.designation || 'Team Member'}</p>
+                                    <p className="text-sm text-secondary-500">Project Head / PI</p>
                                 </div>
+                                <span className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-xs font-medium">Lead</span>
                             </div>
-                        ))}
-                        {(!project.staff || project.staff.length === 0) && (
-                            <p className="text-center text-secondary-500 py-4">No additional team members</p>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {activeTab === 'budget' && (
-                <div className="premium-card p-6">
-                    <h3 className="text-lg font-semibold text-secondary-900 mb-6">Budget Allocation</h3>
-                    {project.budgets && project.budgets.length > 0 ? (
-                        <table className="table-premium">
-                            <thead>
-                                <tr>
-                                    <th>Fiscal Year</th>
-                                    <th>Allocated (₹)</th>
-                                    <th>Utilized (₹)</th>
-                                    <th>Remaining (₹)</th>
-                                    <th>Utilization %</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {project.budgets.map(b => (
-                                    <tr key={b.id}>
-                                        <td className="font-medium">{b.fiscalYear}</td>
-                                        <td>₹{(b.amountINR / 100000).toFixed(2)} L</td>
-                                        <td>₹{(b.utilized / 100000).toFixed(2)} L</td>
-                                        <td>₹{((b.amountINR - b.utilized) / 100000).toFixed(2)} L</td>
-                                        <td>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-20 h-2 bg-secondary-200 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-primary-500 rounded-full"
-                                                        style={{ width: `${Math.min(100, (b.utilized / b.amountINR) * 100)}%` }}
-                                                    />
-                                                </div>
-                                                <span className="text-sm">{Math.round((b.utilized / b.amountINR) * 100)}%</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <div className="text-center py-12">
-                            <MoneyRegular className="w-12 h-12 text-secondary-300 mx-auto mb-3" />
-                            <p className="text-secondary-500">No budget allocations yet</p>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {activeTab === 'timeline' && (
-                <div className="premium-card p-6">
-                    <h3 className="text-lg font-semibold text-secondary-900 mb-6">Project Milestones</h3>
-                    {project.milestones && project.milestones.length > 0 ? (
-                        <div className="space-y-4">
-                            {project.milestones.map((m, idx) => (
-                                <div key={m.id} className="flex items-start gap-4">
-                                    <div className="flex flex-col items-center">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${m.status === 'COMPLETED' ? 'bg-success-500 text-white' :
-                                            m.status === 'IN_PROGRESS' ? 'bg-primary-500 text-white' :
-                                                'bg-secondary-200 text-secondary-500'
-                                            }`}>
-                                            {m.status === 'COMPLETED' ? (
-                                                <CheckmarkCircleRegular className="w-5 h-5" />
-                                            ) : (
-                                                <span className="text-sm font-medium">{idx + 1}</span>
-                                            )}
-                                        </div>
-                                        {idx < (project.milestones?.length || 0) - 1 && (
-                                            <div className="w-0.5 h-12 bg-secondary-200 my-1" />
-                                        )}
+                            {/* Staff */}
+                            {project.staff?.map(s => (
+                                <div key={s.user.id} className="flex items-center gap-4 p-4 bg-secondary-50 rounded-xl">
+                                    <div className="w-12 h-12 rounded-full bg-secondary-200 flex items-center justify-center text-secondary-600 font-semibold">
+                                        {s.user.firstName[0]}{s.user.lastName[0]}
                                     </div>
-                                    <div className="flex-1 pb-4">
-                                        <p className="font-medium text-secondary-900">{m.title}</p>
-                                        <p className="text-sm text-secondary-500">
-                                            {new Date(m.startDate).toLocaleDateString('en-IN')} - {new Date(m.endDate).toLocaleDateString('en-IN')}
+                                    <div className="flex-1">
+                                        <p className="font-medium text-secondary-900">
+                                            {s.user.firstName} {s.user.lastName}
                                         </p>
+                                        <p className="text-sm text-secondary-500">{s.user.designation || 'Team Member'}</p>
                                     </div>
                                 </div>
                             ))}
+                            {(!project.staff || project.staff.length === 0) && (
+                                <p className="text-center text-secondary-500 py-4">No additional team members</p>
+                            )}
                         </div>
-                    ) : (
-                        <div className="text-center py-12">
-                            <CalendarRegular className="w-12 h-12 text-secondary-300 mx-auto mb-3" />
-                            <p className="text-secondary-500">No milestones defined yet</p>
-                        </div>
-                    )}
-                </div>
-            )}
+                    </div>
+                )
+            }
 
-            {/* Upload Modal */}
-            {showUploadModal && (
-                <div className="fixed inset-0 bg-secondary-900/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-premium-lg w-full max-w-md animate-scale-in">
-                        <div className="flex items-center justify-between p-6 border-b border-secondary-200">
-                            <h3 className="text-xl font-semibold text-secondary-900">Upload Document</h3>
-                            <button
-                                onClick={() => { setShowUploadModal(false); setSelectedFile(null); }}
-                                className="p-2 hover:bg-secondary-100 rounded-lg"
-                            >
-                                <DismissRegular className="w-5 h-5 text-secondary-500" />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div
-                                onClick={() => fileInputRef.current?.click()}
-                                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer ${selectedFile ? 'border-success-500 bg-success-50' : 'border-secondary-300 hover:border-primary-400'
-                                    }`}
-                            >
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    onChange={handleFileSelect}
-                                    className="hidden"
-                                />
-                                {selectedFile ? (
-                                    <div className="flex items-center justify-center gap-2">
-                                        <CheckmarkCircleRegular className="w-6 h-6 text-success-500" />
-                                        <span className="font-medium">{selectedFile.name}</span>
+            {
+                activeTab === 'budget' && (
+                    <div className="premium-card p-6">
+                        <h3 className="text-lg font-semibold text-secondary-900 mb-6">Budget Allocation</h3>
+                        {project.budgets && project.budgets.length > 0 ? (
+                            <table className="table-premium">
+                                <thead>
+                                    <tr>
+                                        <th>Fiscal Year</th>
+                                        <th>Allocated (₹)</th>
+                                        <th>Utilized (₹)</th>
+                                        <th>Remaining (₹)</th>
+                                        <th>Utilization %</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {project.budgets.map(b => (
+                                        <tr key={b.id}>
+                                            <td className="font-medium">{b.fiscalYear}</td>
+                                            <td>₹{(b.amountINR / 100000).toFixed(2)} L</td>
+                                            <td>₹{(b.utilized / 100000).toFixed(2)} L</td>
+                                            <td>₹{((b.amountINR - b.utilized) / 100000).toFixed(2)} L</td>
+                                            <td>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-20 h-2 bg-secondary-200 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-primary-500 rounded-full"
+                                                            style={{ width: `${Math.min(100, (b.utilized / b.amountINR) * 100)}%` }}
+                                                        />
+                                                    </div>
+                                                    <span className="text-sm">{Math.round((b.utilized / b.amountINR) * 100)}%</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div className="text-center py-12">
+                                <MoneyRegular className="w-12 h-12 text-secondary-300 mx-auto mb-3" />
+                                <p className="text-secondary-500">No budget allocations yet</p>
+                            </div>
+                        )}
+                    </div>
+                )
+            }
+
+            {
+                activeTab === 'timeline' && (
+                    <div className="premium-card p-6">
+                        <h3 className="text-lg font-semibold text-secondary-900 mb-6">Project Milestones</h3>
+                        {project.milestones && project.milestones.length > 0 ? (
+                            <div className="space-y-4">
+                                {project.milestones.map((m, idx) => (
+                                    <div key={m.id} className="flex items-start gap-4">
+                                        <div className="flex flex-col items-center">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${m.status === 'COMPLETED' ? 'bg-success-500 text-white' :
+                                                m.status === 'IN_PROGRESS' ? 'bg-primary-500 text-white' :
+                                                    'bg-secondary-200 text-secondary-500'
+                                                }`}>
+                                                {m.status === 'COMPLETED' ? (
+                                                    <CheckmarkCircleRegular className="w-5 h-5" />
+                                                ) : (
+                                                    <span className="text-sm font-medium">{idx + 1}</span>
+                                                )}
+                                            </div>
+                                            {idx < (project.milestones?.length || 0) - 1 && (
+                                                <div className="w-0.5 h-12 bg-secondary-200 my-1" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 pb-4">
+                                            <p className="font-medium text-secondary-900">{m.title}</p>
+                                            <p className="text-sm text-secondary-500">
+                                                {new Date(m.startDate).toLocaleDateString('en-IN')} - {new Date(m.endDate).toLocaleDateString('en-IN')}
+                                            </p>
+                                        </div>
                                     </div>
-                                ) : (
-                                    <>
-                                        <ArrowUploadRegular className="w-8 h-8 mx-auto text-secondary-400 mb-2" />
-                                        <p className="text-secondary-600">Click to select file</p>
-                                    </>
-                                )}
+                                ))}
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-secondary-700 mb-1">Title</label>
-                                <input
-                                    type="text"
-                                    className="input-premium"
-                                    value={uploadForm.title}
-                                    onChange={e => setUploadForm({ ...uploadForm, title: e.target.value })}
-                                />
+                        ) : (
+                            <div className="text-center py-12">
+                                <CalendarRegular className="w-12 h-12 text-secondary-300 mx-auto mb-3" />
+                                <p className="text-secondary-500">No milestones defined yet</p>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-secondary-700 mb-1">Type</label>
+                        )}
+                    </div>
+                )
+            }
+
+            {/* Journal/Comments Tab */}
+            {
+                activeTab === 'journal' && (
+                    <div className="premium-card p-6 space-y-6">
+                        <h3 className="text-lg font-semibold text-secondary-900">Project Journal</h3>
+
+                        {/* Add Comment */}
+                        <div className="space-y-3">
+                            <div className="flex gap-3">
                                 <select
-                                    className="input-premium"
-                                    value={uploadForm.type}
-                                    onChange={e => setUploadForm({ ...uploadForm, type: e.target.value })}
+                                    value={commentCategory}
+                                    onChange={e => setCommentCategory(e.target.value)}
+                                    className="input-premium w-40"
                                 >
-                                    <option value="REPORT">Report</option>
-                                    <option value="PHOTO">Photo</option>
-                                    <option value="VIDEO">Video</option>
-                                    <option value="PUBLICATION">Publication</option>
-                                    <option value="OTHER">Other</option>
+                                    <option value="UPDATE">Update</option>
+                                    <option value="MEETING_NOTE">Meeting Note</option>
+                                    <option value="DECISION">Decision</option>
+                                    <option value="ISSUE">Issue</option>
+                                    <option value="MILESTONE">Milestone</option>
+                                    <option value="RC_COMMENT">RC Comment</option>
                                 </select>
                             </div>
-                        </div>
-                        <div className="flex gap-3 p-6 border-t border-secondary-200">
-                            <button onClick={() => setShowUploadModal(false)} className="flex-1 btn-secondary">
-                                Cancel
-                            </button>
+                            <textarea
+                                value={newComment}
+                                onChange={e => setNewComment(e.target.value)}
+                                placeholder="Add a journal entry or comment..."
+                                rows={3}
+                                className="input-premium w-full resize-none"
+                            />
                             <button
-                                onClick={handleUpload}
-                                className="flex-1 btn-primary"
-                                disabled={uploading || !selectedFile}
+                                onClick={handleAddComment}
+                                disabled={!newComment.trim() || addingComment}
+                                className="btn-primary"
                             >
-                                {uploading ? 'Uploading...' : 'Upload'}
+                                {addingComment ? 'Adding...' : 'Add Entry'}
                             </button>
+                        </div>
+
+                        {/* Comments List */}
+                        <div className="space-y-4 pt-4 border-t border-secondary-200">
+                            {comments.length > 0 ? (
+                                comments.map(comment => (
+                                    <div key={comment.id} className="flex gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-semibold">
+                                            {comment.user.firstName[0]}{comment.user.lastName[0]}
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium text-secondary-900">
+                                                    {comment.user.firstName} {comment.user.lastName}
+                                                </span>
+                                                <span className={`text-xs px-2 py-0.5 rounded-full ${comment.category === 'DECISION' ? 'bg-success-100 text-success-700' :
+                                                    comment.category === 'ISSUE' ? 'bg-danger-100 text-danger-700' :
+                                                        comment.category === 'RC_COMMENT' ? 'bg-accent-100 text-accent-700' :
+                                                            'bg-secondary-100 text-secondary-600'
+                                                    }`}>
+                                                    {comment.category.replace('_', ' ')}
+                                                </span>
+                                                <span className="text-xs text-secondary-400">
+                                                    {new Date(comment.createdAt).toLocaleString('en-IN')}
+                                                </span>
+                                            </div>
+                                            <p className="mt-1 text-secondary-700 whitespace-pre-wrap">{comment.content}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-8 text-secondary-500">
+                                    <p>No journal entries yet. Add the first entry above.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-            {/* Edit Project Modal */}
-            {showEditModal && (
-                <div className="fixed inset-0 bg-secondary-900/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-premium-lg w-full max-w-lg animate-scale-in">
-                        <div className="flex items-center justify-between p-6 border-b border-secondary-200">
-                            <h3 className="text-xl font-semibold text-secondary-900">Edit Project</h3>
-                            <button
-                                onClick={() => setShowEditModal(false)}
-                                className="p-2 hover:bg-secondary-100 rounded-lg"
-                            >
-                                <DismissRegular className="w-5 h-5 text-secondary-500" />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
-                            <div>
-                                <label className="block text-sm font-medium text-secondary-700 mb-1">Title *</label>
-                                <input
-                                    type="text"
-                                    className="input-premium"
-                                    value={editForm.title}
-                                    onChange={e => setEditForm({ ...editForm, title: e.target.value })}
-                                    required
-                                />
+            {/* Upload Modal */}
+            {
+                showUploadModal && (
+                    <div className="fixed inset-0 bg-secondary-900/50 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-premium-lg w-full max-w-md animate-scale-in">
+                            <div className="flex items-center justify-between p-6 border-b border-secondary-200">
+                                <h3 className="text-xl font-semibold text-secondary-900">Upload Document</h3>
+                                <button
+                                    onClick={() => { setShowUploadModal(false); setSelectedFile(null); }}
+                                    className="p-2 hover:bg-secondary-100 rounded-lg"
+                                >
+                                    <DismissRegular className="w-5 h-5 text-secondary-500" />
+                                </button>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-secondary-700 mb-1">Description</label>
-                                <textarea
-                                    className="input-premium"
-                                    rows={3}
-                                    value={editForm.description}
-                                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="p-6 space-y-4">
+                                <div
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer ${selectedFile ? 'border-success-500 bg-success-50' : 'border-secondary-300 hover:border-primary-400'
+                                        }`}
+                                >
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        onChange={handleFileSelect}
+                                        className="hidden"
+                                    />
+                                    {selectedFile ? (
+                                        <div className="flex items-center justify-center gap-2">
+                                            <CheckmarkCircleRegular className="w-6 h-6 text-success-500" />
+                                            <span className="font-medium">{selectedFile.name}</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <ArrowUploadRegular className="w-8 h-8 mx-auto text-secondary-400 mb-2" />
+                                            <p className="text-secondary-600">Click to select file</p>
+                                        </>
+                                    )}
+                                </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-secondary-700 mb-1">Status</label>
+                                    <label className="block text-sm font-medium text-secondary-700 mb-1">Title</label>
+                                    <input
+                                        type="text"
+                                        className="input-premium"
+                                        value={uploadForm.title}
+                                        onChange={e => setUploadForm({ ...uploadForm, title: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-secondary-700 mb-1">Type</label>
                                     <select
                                         className="input-premium"
-                                        value={editForm.status}
-                                        onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                                        value={uploadForm.type}
+                                        onChange={e => setUploadForm({ ...uploadForm, type: e.target.value })}
                                     >
-                                        <option value="ACTIVE">Active</option>
-                                        <option value="COMPLETED">Completed</option>
-                                        <option value="ON_HOLD">On Hold</option>
-                                        <option value="PENDING_APPROVAL">Pending Approval</option>
-                                        <option value="CANCELLED">Cancelled</option>
+                                        <option value="REPORT">Report</option>
+                                        <option value="PHOTO">Photo</option>
+                                        <option value="VIDEO">Video</option>
+                                        <option value="PUBLICATION">Publication</option>
+                                        <option value="OTHER">Other</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-secondary-700 mb-1">Progress (%)</label>
-                                    <input
-                                        type="number"
-                                        className="input-premium"
-                                        min="0"
-                                        max="100"
-                                        value={editForm.progress}
-                                        onChange={e => setEditForm({ ...editForm, progress: Number(e.target.value) })}
-                                    />
-                                </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-secondary-700 mb-1">Start Date</label>
-                                    <input
-                                        type="date"
-                                        className="input-premium"
-                                        value={editForm.startDate}
-                                        onChange={e => setEditForm({ ...editForm, startDate: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-secondary-700 mb-1">End Date</label>
-                                    <input
-                                        type="date"
-                                        className="input-premium"
-                                        value={editForm.endDate}
-                                        onChange={e => setEditForm({ ...editForm, endDate: e.target.value })}
-                                    />
-                                </div>
+                            <div className="flex gap-3 p-6 border-t border-secondary-200">
+                                <button onClick={() => setShowUploadModal(false)} className="flex-1 btn-secondary">
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleUpload}
+                                    className="flex-1 btn-primary"
+                                    disabled={uploading || !selectedFile}
+                                >
+                                    {uploading ? 'Uploading...' : 'Upload'}
+                                </button>
                             </div>
-                        </div>
-                        <div className="flex gap-3 p-6 border-t border-secondary-200">
-                            <button onClick={() => setShowEditModal(false)} className="flex-1 btn-secondary">
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleUpdateProject}
-                                className="flex-1 btn-primary"
-                                disabled={saving || !editForm.title}
-                            >
-                                {saving ? 'Saving...' : 'Save Changes'}
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+
+            {/* Edit Project Modal */}
+            {
+                showEditModal && (
+                    <div className="fixed inset-0 bg-secondary-900/50 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-premium-lg w-full max-w-lg animate-scale-in">
+                            <div className="flex items-center justify-between p-6 border-b border-secondary-200">
+                                <h3 className="text-xl font-semibold text-secondary-900">Edit Project</h3>
+                                <button
+                                    onClick={() => setShowEditModal(false)}
+                                    className="p-2 hover:bg-secondary-100 rounded-lg"
+                                >
+                                    <DismissRegular className="w-5 h-5 text-secondary-500" />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
+                                <div>
+                                    <label className="block text-sm font-medium text-secondary-700 mb-1">Title *</label>
+                                    <input
+                                        type="text"
+                                        className="input-premium"
+                                        value={editForm.title}
+                                        onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-secondary-700 mb-1">Description</label>
+                                    <textarea
+                                        className="input-premium"
+                                        rows={3}
+                                        value={editForm.description}
+                                        onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-secondary-700 mb-1">Status</label>
+                                        <select
+                                            className="input-premium"
+                                            value={editForm.status}
+                                            onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                                        >
+                                            <option value="ACTIVE">Active</option>
+                                            <option value="COMPLETED">Completed</option>
+                                            <option value="ON_HOLD">On Hold</option>
+                                            <option value="PENDING_APPROVAL">Pending Approval</option>
+                                            <option value="CANCELLED">Cancelled</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-secondary-700 mb-1">Progress (%)</label>
+                                        <input
+                                            type="number"
+                                            className="input-premium"
+                                            min="0"
+                                            max="100"
+                                            value={editForm.progress}
+                                            onChange={e => setEditForm({ ...editForm, progress: Number(e.target.value) })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-secondary-700 mb-1">Start Date</label>
+                                        <input
+                                            type="date"
+                                            className="input-premium"
+                                            value={editForm.startDate}
+                                            onChange={e => setEditForm({ ...editForm, startDate: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-secondary-700 mb-1">End Date</label>
+                                        <input
+                                            type="date"
+                                            className="input-premium"
+                                            value={editForm.endDate}
+                                            onChange={e => setEditForm({ ...editForm, endDate: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 p-6 border-t border-secondary-200">
+                                <button onClick={() => setShowEditModal(false)} className="flex-1 btn-secondary">
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleUpdateProject}
+                                    className="flex-1 btn-primary"
+                                    disabled={saving || !editForm.title}
+                                >
+                                    {saving ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 }

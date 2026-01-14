@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement } from 'chart.js';
@@ -17,6 +17,7 @@ import {
     CheckmarkCircleRegular,
     DismissCircleRegular,
     ClockAlarmRegular,
+    ImageRegular,
 } from '@fluentui/react-icons';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement);
@@ -45,6 +46,24 @@ export default function DashboardPage() {
     const { user, accessToken } = useAuthStore();
     const [data, setData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
+
+    // Chart refs for export functionality
+    const statusChartRef = useRef<any>(null);
+    const categoryChartRef = useRef<any>(null);
+
+    // Save chart as PNG image
+    const saveChartAsImage = (chartRef: any, filename: string) => {
+        if (chartRef?.current) {
+            const chart = chartRef.current;
+            const url = chart.toBase64Image('image/png', 1);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${filename}_${new Date().toISOString().split('T')[0]}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
 
     useEffect(() => {
         fetchDashboardData();
@@ -302,13 +321,23 @@ export default function DashboardPage() {
                 <div className="chart-container">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-semibold text-secondary-900">Project Status</h3>
-                        <Link to="/projects" className="btn-ghost text-sm">
-                            View All <ArrowRightRegular className="w-4 h-4 ml-1" />
-                        </Link>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => saveChartAsImage(statusChartRef, 'project_status')}
+                                className="p-2 text-secondary-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                title="Save as Image"
+                            >
+                                <ImageRegular className="w-5 h-5" />
+                            </button>
+                            <Link to="/projects" className="btn-ghost text-sm">
+                                View All <ArrowRightRegular className="w-4 h-4 ml-1" />
+                            </Link>
+                        </div>
                     </div>
                     <div className="flex items-center gap-8">
                         <div className="w-48 h-48">
                             <Doughnut
+                                ref={statusChartRef}
                                 data={statusChartData}
                                 options={{
                                     cutout: '70%',
@@ -341,9 +370,17 @@ export default function DashboardPage() {
                 <div className="chart-container">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-semibold text-secondary-900">Projects by Category</h3>
+                        <button
+                            onClick={() => saveChartAsImage(categoryChartRef, 'projects_by_category')}
+                            className="p-2 text-secondary-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                            title="Save as Image"
+                        >
+                            <ImageRegular className="w-5 h-5" />
+                        </button>
                     </div>
                     <div className="h-64">
                         <Bar
+                            ref={categoryChartRef}
                             data={categoryChartData}
                             options={{
                                 responsive: true,
